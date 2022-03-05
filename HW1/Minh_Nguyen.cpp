@@ -16,16 +16,27 @@ int main () {
     // Read adjacency matrix from input file
     int input_arr[7][7];      // Two dimensions array to store input from files
     
-    ifstream inputFile ("input.txt");
-    string line;
-    if (inputFile.is_open()) {
+    ifstream inputFile1 ("input1.txt");
+    if (inputFile1.is_open()) {
         for (int i = 0; i < 7; i++) {
             for (int j = 0; j < 7; j++) {
-                inputFile >> input_arr[i][j];
+                inputFile1 >> input_arr[i][j];
             }
         }
-        inputFile.close();
+        inputFile1.close();
     }
+
+    // Read the word content
+    string arr[3];
+    ifstream inputFile2 ("input2.txt");
+    if (inputFile2.is_open()) {
+        for (int i = 0; i < 3; i++) {
+            inputFile2 >> arr[i];
+        }
+        inputFile2.close();
+    }
+
+    
 
     pid_t p;
     
