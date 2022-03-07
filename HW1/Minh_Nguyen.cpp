@@ -13,10 +13,10 @@ using namespace std;
 struct Vertex {
     int id;         // Id of the vertex
     string value;   // Value of the vertex
+    vector<int> input_pipes_ids;     // Inputs of the vertex (the pipeID)
+    vector<int> output_pipes_ids;    // Outputs of the vertex (the pipeID)
     bool isInput;   // Is the vertex input of another vertex
     bool isOutput;  // Is the vertex output of another vertex
-    int inputId;    // ID of the incoming vertex
-    int outputId;   // ID of the connected output vertex
 };
 
 int main () {
@@ -87,34 +87,50 @@ int main () {
         v->id = input_ids[i];
         v->isInput = true;
         v->isOutput = false;
-        v->value = arr[i]; // Get the value from input string array
+        // v->inputs.push_back(-1);    // This vertex will read input from string file
+        // v->value = arr[i]; // Get the value from input string array
         vertices.push_back(v);
     }
 
-    // Number of pipes
-    int num_pipes = 0;
+    // Add all the vertices to the vertices vector
     for (int i = 0; i < size; i++) {
-        for (int j = 0; j < size; j++) {
-            if (matrix[i][j] == 1)
-                num_pipes++;
+        if (i < vertices.size() && i == vertices[i]->id) {
+            continue;
+        }
+        else {
+            Vertex *v = new Vertex;
+            v->id = i;
+            vertices.push_back(v);
         }
     }
 
+    // Number of pipes
+    int num_1s = 0;
+    for (int i = 0; i < size; i++) {
+        for (int j = 0; j < size; j++) {
+            if (matrix[i][j] == 1)
+                num_1s++;
+        }
+    }
+    int num_pipes = num_1s + 1;
+
+
+    // Making all the pipes
+    for (int i = 0; i < num_pipes; i++) {
+        int fd[i][2];
+        if (pipe(fd[2]) == -1) {
+            perror("Pipes failed");
+            return 1;
+        }
+    }
 
     int limit = size;   // The number of time to fork equals to the size of matrix
     // The limit of fork times will be = size + 1 if there're more than 1 output in the matrix
     if (zero_row > 1) 
         limit += 1;
 
+    int pnum = -1;
     for (int i = 0; i < limit; i++) {
-        int pnum = -1;
-        // Start piping
-        int fd[i][2];
-        
-        if (pipe(fd[2]) == -1) {
-            perror("Pipes failed");
-            return 1;
-        }
 
         // Start forking
         pid_t p = fork();
@@ -122,58 +138,34 @@ int main () {
             perror("Fork failed");
             return 1;
         }
-        // Child process
-        else if (p == 0) {
-            pnum = i;
-            close(fd[i][1]);    // Close the write end of the pipe
-            
-            read(fd[i][0], vertices[i], sizeof(vertices[i])); // Read the string from the input
-            close(fd[i][0]); // Close the read end of the pipe
-            
-            write(fd[i][1], vertices[i], sizeof(vertices[i])); // Write the string to the next vertex
-            close(fd[i][1]); // Close the write end of the pipe
-            break;
-        }
         // Parent process
-        else {
-            close(fd[i][0]); // Close the read end of the pipe
+        // else if (p > 0) {
+        //     cout << "pnum = " << pnum << endl;
+        //     cout << p << endl;
+        //     close(fd[i][0]); // Close the read end of the pipe
             
-            write(fd[i][1], vertices[i], sizeof(vertices[i])); // Write the string to the next vertex
-            close(fd[i][1]); // Close the write end of the pipe
-            
-            wait(NULL); // Wait for child to send the string
+        //     write(fd[i][1], vertices[i], sizeof(vertices[i])); // Write the string to the next vertex
+        //     close(fd[i][1]); // Close the write end of the pipe
 
-            read(fd[i][0], vertices[i], sizeof(vertices[i]));   // Read the string from the input
-            close(fd[i][0]); // Close the read end of the pipe
-        }
+        //     read(fd[i][0], vertices[i], sizeof(vertices[i]));   // Read the string from the input
+        //     close(fd[i][0]); // Close the read end of the pipe
+        // }
+        // // Child process
+        // else {
+        //     pnum = i;
+        //     cout << "pnum = " << pnum << endl;
+        //     cout << p << endl;
+        //     close(fd[i][1]);    // Close the write end of the pipe
+            
+        //     read(fd[i][0], vertices[i], sizeof(vertices[i])); // Read the string from the input
+        //     close(fd[i][0]); // Close the read end of the pipe
+            
+        //     write(fd[i][1], vertices[i], sizeof(vertices[i])); // Write the string to the next vertex
+        //     cout << vertices[i+1] << endl;
+        //     close(fd[i][1]); // Close the write end of the pipe
+        //     break;
+        // }
     }
-    // for (int i = 0; i < num_pipes; i++) {
-        
-
-    // }
-
-    // // Check the connection between the vertices
-    // for (int i = 0; i < size; i++) {
-    //     for (int j = 0; j < size; j++) {
-    //         if (matrix[i][j] == 1) {
-    //             Vertex *v = new Vertex;
-    //             v->id = j;
-    //             v->isOutput = true;
-    //             v->inputId = i;
-    //             vertices.push_back(v);
-    //             // Check the connected status of the vertex
-    //             // cout << v->inputId << " - " << v->value << " is input of " << v->id << endl;
-    //         }
-    //     }
-    // }
-    
-    // // for (int i = 0; i < vertices.size(); i++) {
-    // //     if (vertices[i]->inputId != 0) {
-    // //         cout << vertices[i]->id << " - " << vertices[i]->value << " is output of " << vertices[i]->inputId << endl;
-    // //     }
-    // //     else cout << vertices[i]->id << " - " << vertices[i]->value << " is input of " << vertices[i]->outputId << endl;
-    // // }
-
 
     return 0;
 }
