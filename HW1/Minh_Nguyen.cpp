@@ -163,7 +163,6 @@ int main () {
         else if (p > 0) {
             char buffer[100];
 
-            read(fd[i][0], buffer, 100);  // Read from string input
             close(fd[i][0]);              // Close the read end of the pipe
 
             for (int j = 0; j < vertices.size(); j++) {
@@ -173,11 +172,17 @@ int main () {
                     write(fd[i][1], strcpy(char_buffer, s.c_str()), s.length() + 1);
                 }
             }
+            close(fd[i][1]); // Close the write end of the pipe
+            
+            read(fd[i][0], buffer, 100);
+            close(fd[i][0]); // Close the read end of the pipe
         }
         // Child process
         else {
             pipe_id = i;   // Pipe ID
             char buffer[100];
+            
+            close(fd[i][1]); // Close the write end of the pipe
 
             read(fd[pipe_id][0], buffer, 100); // Read from pipe
             close(fd[pipe_id][0]); // Close the read end of the pipe
