@@ -11,12 +11,12 @@
 using namespace std;
 
 struct Vertex {
-    int id;         // Id of the vertex
-    string value;   // Value of the vertex
+    int id;                          // Id of the vertex
+    string value;                    // Value of the vertex
     vector<int> input_pipes_ids;     // Inputs of the vertex (the pipeID)
     vector<int> output_pipes_ids;    // Outputs of the vertex (the pipeID)
-    bool isInput;   // Is the vertex input of another vertex
-    bool isOutput;  // Is the vertex output of another vertex
+    bool isInput;                    // Is the input vertex
+    bool isOutput;                   // Is the output vertex
 };
 
 int main () {
@@ -63,10 +63,10 @@ int main () {
         }
     }
 
-    // Vector holds the output vertices in the matrix
-    vector<int> output_ids;
+    // // Vector holds the output vertices in the matrix
+    // vector<int> output_ids;
     // Find the number of 0s rows, which is the number of outputs in the matrix
-    int zero_row = 0;
+    int zero_rows = 0;
     for (int i = 0; i < size; i++) {
         int j = 0;
         while (j < size) {
@@ -75,8 +75,8 @@ int main () {
             }
             j++;
             if (j == 6)     // If j reaches to the end of the row, that means this is a zero row
-                output_ids.push_back(i);
-                zero_row++;
+                // output_ids.push_back(i);
+                zero_rows++;
         }
     }
 
@@ -87,8 +87,7 @@ int main () {
         v->id = input_ids[i];
         v->isInput = true;
         v->isOutput = false;
-        // v->inputs.push_back(-1);    // This vertex will read input from string file
-        // v->value = arr[i]; // Get the value from input string array
+        v->value = arr[i]; // Get the value from input string array
         vertices.push_back(v);
     }
 
@@ -104,6 +103,28 @@ int main () {
         }
     }
 
+    // // Add the input pipes ids of each vertex
+    // int count_in = 0; // Count the number of 1 in the matrix
+    // for (int j = 0; j < size; j++) {
+    //     for (int i = 0; i < size; i++) {
+    //         if (matrix[i][j] == 1) {
+    //             count_in++;
+    //             vertices[j]->input_pipes_ids.push_back(count_in);     // Add the input pipe ids
+    //         }
+    //     }
+    // }
+
+    // Add the output pipes ids of each vertex
+    int count_out = 0; // Count the number of 1 in the matrix
+    for (int i = 0; i < size; i++) {
+        for (int j = 0; j < size; j++) {
+            if (matrix[i][j] == 1) {
+                count_out++;
+                vertices[i]->output_pipes_ids.push_back(count_out);     // Add the output pipe ids
+            }
+        }
+    }
+
     // Number of pipes
     int num_1s = 0;
     for (int i = 0; i < size; i++) {
@@ -116,9 +137,10 @@ int main () {
 
 
     // Making all the pipes
-    for (int i = 0; i < num_pipes; i++) {
-        int fd[i][2];
-        if (pipe(fd[2]) == -1) {
+    int fd[num_pipes][2];
+    for (int i = 1; i <= num_pipes; i++) {
+        // int fd[i][2];
+        if (pipe(fd[i]) == -1) {
             perror("Pipes failed");
             return 1;
         }
@@ -126,45 +148,55 @@ int main () {
 
     int limit = size;   // The number of time to fork equals to the size of matrix
     // The limit of fork times will be = size + 1 if there're more than 1 output in the matrix
-    if (zero_row > 1) 
+    if (zero_rows > 1) 
         limit += 1;
 
-    int pnum = -1;
-    for (int i = 0; i < limit; i++) {
-
-        // Start forking
+    // Start forking
+    int pipe_id = 0;
+    for (int i = 1; i <= limit; i++) {
         pid_t p = fork();
         if (p == -1) {
             perror("Fork failed");
             return 1;
         }
         // Parent process
-        // else if (p > 0) {
-        //     cout << "pnum = " << pnum << endl;
-        //     cout << p << endl;
-        //     close(fd[i][0]); // Close the read end of the pipe
-            
-        //     write(fd[i][1], vertices[i], sizeof(vertices[i])); // Write the string to the next vertex
-        //     close(fd[i][1]); // Close the write end of the pipe
+        else if (p > 0) {
+            char buffer[100];
 
-        //     read(fd[i][0], vertices[i], sizeof(vertices[i]));   // Read the string from the input
-        //     close(fd[i][0]); // Close the read end of the pipe
-        // }
-        // // Child process
-        // else {
-        //     pnum = i;
-        //     cout << "pnum = " << pnum << endl;
-        //     cout << p << endl;
-        //     close(fd[i][1]);    // Close the write end of the pipe
+            read(fd[i][0], buffer, 100);  // Read from string input
+            close(fd[i][0]);              // Close the read end of the pipe
+
+            for (int j = 0; j < vertices.size(); j++) {
+                if (vertices[j]->isInput == true) {
+                    string s = vertices[j]->value;
+                    char char_buffer[s.length() + 1];
+                    write(fd[i][1], strcpy(char_buffer, s.c_str()), s.length() + 1);
+                }
+            }
+        }
+        // Child process
+        else {
+            pipe_id = i;   // Pipe ID
+            char buffer[100];
+
+            read(fd[pipe_id][0], buffer, 100); // Read from pipe
+            close(fd[pipe_id][0]); // Close the read end of the pipe
             
-        //     read(fd[i][0], vertices[i], sizeof(vertices[i])); // Read the string from the input
-        //     close(fd[i][0]); // Close the read end of the pipe
-            
-        //     write(fd[i][1], vertices[i], sizeof(vertices[i])); // Write the string to the next vertex
-        //     cout << vertices[i+1] << endl;
-        //     close(fd[i][1]); // Close the write end of the pipe
-        //     break;
-        // }
+            // Send the string to the next process  
+            // need to process the string
+            string s = vertices[i-1]->value;
+            char char_buffer[s.length() + 1];
+
+            for (int k = 0; k < vertices.size(); k++) {
+                for (int h = 0; h < vertices[k]->output_pipes_ids.size(); h++) {
+                    if (pipe_id == vertices[k]->output_pipes_ids[h]) {
+                        write(fd[pipe_id][1], strcpy(char_buffer, s.c_str()), s.length() + 1);
+                    }
+                }
+            }
+            close(fd[pipe_id][1]); // Close the write end of the pipe
+            break;
+        }
     }
 
     return 0;
