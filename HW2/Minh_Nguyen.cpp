@@ -294,8 +294,7 @@ void request(string message, Process process, int requestInts[])
 	// Safe check
 	if (isSafe()) {
 		// Complete transaction
-		cout << "Process " << process.ID << " is safe. Transaction completed." << endl;
-
+		cout << "Process " << process.ID << " is safe. Instruction completed." << endl;
 	}
 	else {
 		// Process must wait
@@ -351,7 +350,7 @@ void release(string message, Process process, int releaseInts[]) {
 	write(process.pipe_ParentSendToChild[1], message.c_str(), bufferLength);
 }
 
-void useresources(string message, Process process, int amount) {
+void use_resources(string message, Process process, int amount) {
 	cout << "Using resources for Process: " << process.ID << "..." << endl;
 	
 	cout << "Process " << process.ID << " used (" << amount << ") allocated resources." << endl;
@@ -360,6 +359,77 @@ void useresources(string message, Process process, int amount) {
 	message += "=SUCCESS";
 
 	write(process.pipe_ParentSendToChild[1], message.c_str(), bufferLength);
+}
+
+void renderMessage(Process process, string message) {
+	if (message.find("request") != string::npos) {
+		cout << "Main Process received instruction: " << message << " from Process " << process.ID << endl;
+
+		//	Find all integers in the message and store it as an array
+		int intsInMessage[numResources];
+		int intIndexInString = 0;
+		string number;
+		for (int i = 0; i < message.length(); i++) {
+			if (isdigit(message[i])) {	
+				//found a digit, get the int
+				for (int j = i; ; j++) {
+					if (isdigit(message[j]))		//consecutive digits
+						number += message[j];
+					else {
+						i = j - 1;		//set i to the index of the last digit
+						break;
+					}
+				}
+				intsInMessage[intIndexInString] = stoi(number.c_str());
+				number = "";
+				intIndexInString++;
+			}
+		}
+		//	Perform request function and pass the parameter
+		request(message, process, intsInMessage);
+	}
+	else if (message.find("release") != string::npos) {
+		cout << "Main Process received instruction: " << message << " from Process " << process.ID << endl;
+		
+		//	Find all integers in the message and store it as an array
+		int intsInMessage[numResources];
+		int intIndexInString = 0;
+		string number;
+		for (int i = 0; i < message.length(); i++) {
+			if (isdigit(message[i])) {	//found a digit, get the int
+				for (int j = i; ; j++) {
+					if (isdigit(message[j]))		//consecutive digits
+						number += message[j];
+					else {
+						i = j - 1;		//set i to the index of the last digit
+						break;
+					}
+				}
+				intsInMessage[intIndexInString] = stoi(number.c_str());
+				number = "";
+				intIndexInString++;
+			}
+		}
+
+		// Perform release function and pass the parameter
+		release(message, process, intsInMessage);
+	}
+	else if (message.find("use_resources") != string::npos) {
+		cout << "Main Process received instruction: " << message << " from Process " << process.ID << endl;
+		
+		use_resources(message, process, 1);
+	}
+	// If process sent termination message... tell main process that it has been terminated
+	else if (message.find("TERMINATED") != string::npos) {
+		numProcessesRemaining--;
+	}
+	// Else, message is invalid... Terminate the child process
+	else {
+		write(process.pipe_ChildSendToParent[1], "TERMINATE", bufferLength);
+
+		// cout << "ERROR: invalid instruction message." << endl;
+		exit(0);
+	}
 }
 
 int main() {
@@ -432,7 +502,7 @@ int main() {
 
 		exit(0);
 	}
-	//	Process if a PARENT/Main Process
+	//	Process Parent Process
 	else {
 		numProcessesRemaining = numProcesses;
 		while(numProcessesRemaining > 0) {			
@@ -440,17 +510,14 @@ int main() {
 				read(processes[i].pipe_ChildSendToParent[0], buffer, bufferLength);
 
 				string instructionMessage = buffer;
-
 				//	if the read buffer is not empty... evaluate message 
-				// if (sizeof(instructionMessage) > 0)
-				// 	EvaluateMessage(processes[i], instructionMessage);
+				if (sizeof(instructionMessage) > 0)
+					renderMessage(processes[i], instructionMessage);
 			}
 		}
-		//close(processes[0].pipe_ChildWriteToParent[0]);
 	}
 
 	cout << "\nNo more instructions left to process. Main Process terminating..." << endl;
 
-	// cout << "Done\n";
     return 0;
 }
