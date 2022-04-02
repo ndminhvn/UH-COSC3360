@@ -6,167 +6,173 @@
 #include <fstream>
 #include <string>
 #include <string.h>
-#include <sstream>
-#include <chrono>
 
 using namespace std;
 
-void ReadFromFile(string inputFileName)
-{
-	//	input the string argument of the input file
-	fstream inputFile(inputFileName);
+// Variables
+int numResources = 0;						//	The total number of resource nodes
+int numProcesses = 0;						//	The total number of processes
+struct Resource	{						//	Structure of the resource node
+	int ID;
+	int available;
+};
 
-	//	Evaluate the input file
-	if (inputFile.is_open())
-	{
-		cout << "\n" << "Opened file: " << inputFileName << "\n\n";
+Resource *resources;					//	Array that contains all the structures of the resrouce nodes
+
+struct Process {
+	int ID;
+	int deadline;
+	int computeTime;					//	Integer equal to number of requests and releases plus the parenthesized values in the calculate and useresources instructions.
+	int *allocatedResources;			//	The amount of resources that is currently allocated to the process per resource
+	int *maxResources;					//	Array representing the max amount of resources a process need to complete process from each resource
+	int *neededResources;				//	Array of how much resources needed left to complete execution per resource
+	string *instructions;				//	Array of instructions for the processor
+	int pipe_ParentSendToChild[2];			
+	int pipe_ChildSendToParent[2];			
+};
+
+Process *processes;						//	Array that contains all the structures of the processes
+char buffer[1000];						//	Character buffer length of write message
+int bufferLength;
+int instructionsToProcess = 0;			//  Total number of instructions
+int numProcessesRemaining;			//	The number of processes remaining to process.
+
+int getValueFromLine(string inputString) {
+	//	Find the first '=' sign which indicates that the desired value is after it
+	int pos = inputString.find("=");
+
+	//	Create a sub string for everything after the '=' sign
+	string sub = inputString.substr(pos + 1);
+
+	return stoi(sub);
+}
+
+void readFromFile(string fileName) {
+	fstream inputFile(fileName);	
+
+	if (inputFile.is_open()) {
+		// cout << "\n" << "Opened file: " << fileName << "\n\n";
 
 		//	Get the first line
 		string currentLine;
 
-		//	Find & Assign the amount of resources
+		//	Get the number of resources
 		getline(inputFile, currentLine);
-		numOfResources = GetFirstIntInString(currentLine);
+		numResources = stoi(currentLine);
 		
-		//	Initialize size of resources array & avaliable array
-		resources = new Resource[numOfResources];
-		//available = new int[numOfResources];
-		cout << "Total Resources: " << numOfResources << endl;
+		//	Initialize size of resources array
+		resources = new Resource[numResources];
+		// cout << "Total Resources: " << numResources << endl;	//DEBUG
 
-		//	Find & Assign the amount of processes
+		//	Get the amount of processes
 		getline(inputFile, currentLine);
-		numOfProcesses = GetFirstIntInString(currentLine);
+		numProcesses = stoi(currentLine);
 		
-		//	Initialize size of processes array and pipe read/write size which is 2
-		processes = new Process[numOfProcesses];
-		//for (int i = 0; i < numOfProcesses; i++)
-			//processes[i] = new Process[2];
-		cout << "Total Processes: " << numOfProcesses << "\n\n";
+		//	Initialize size of processes array
+		processes = new Process[numProcesses];
+		// cout << "Total Processes: " << numProcesses << "\n\n";	//DEBUG
 
-		//	Determine the ID and amount of resources each resource has
-		for (int i = 0; i < numOfResources; i++)
-		{
+		//	Get the ID and amount of resources each resource has
+		for (int i = 0; i < numResources; i++) {
 			getline(inputFile, currentLine);
 
 			//	Create new resource struct and add it to array of resources
 			Resource resource;
 			resources[i] = resource;
 			resources[i].ID = i;
-			resources[i].available = GetFirstIntInString(currentLine);
-			//available[i] = resources[i].amount;
-			cout << "Resource " << resources[i].ID + 1 << " has " << resources[i].available << " amount of resources." << endl;
+			resources[i].available = getValueFromLine(currentLine);
+			// cout << "Resource " << resources[i].ID + 1 << " has " << resources[i].available << " instances of resources." << endl;	// DEBUG
 		}
 
-		cout << endl;	//	Skip a line for neatness
+		// cout << endl;	//	Skip a line - Used for DEBUG 
 
-		//	Find & Assign the size of resource related parameters for the process
-		for (int i = 0; i < numOfProcesses; i++)
-		{
-			processes[i].allocatedResources = new int[numOfResources];
-			processes[i].maxResources = new int[numOfResources];
-			processes[i].neededResources = new int[numOfResources];
+		//	Get the size of resource related parameters for the process
+		for (int i = 0; i < numProcesses; i++) {
+			processes[i].allocatedResources = new int[numResources];
+			processes[i].maxResources = new int[numResources];
+			processes[i].neededResources = new int[numResources];
 		}
-		//maxResourcePerProcess = new int*[numOfProcesses];
-		//for (int i = 0; i < numOfProcesses * numOfResources; i++)
-		//	maxResourcePerProcess[i] = new int[numOfResources];
 		
-		//	Loop through the each process and assign the value of the max value processor can demand from each resource
-		for (int i = 0; i < numOfProcesses; i++)
-		{
-			cout << "Max resources Process " << i + 1 << " that can demand from:" << endl;
+		//	Get the value of the max value processor can demand from each resource
+		for (int i = 0; i < numProcesses; i++) {
+			// cout << "Max resources Process " << i + 1 << " that can demand from:" << endl;
 			
-			for (int j = 0; j < numOfResources; j++)
-			{
-				//	Get new line and find value in string
+			for (int j = 0; j < numResources; j++) {
 				getline(inputFile, currentLine);
-
-				processes[i].maxResources[j] = GetMaxResourcePerProcessorValue(currentLine);
+				processes[i].maxResources[j] = getValueFromLine(currentLine);
 				processes[i].neededResources[j] = processes[i].maxResources[j];
 				
-				//	Display result
-				cout << " Resource " << j + 1 << ": " << processes[i].maxResources[j] << endl;
-				//cout << " Resource " << j + 1 << ": " << maxResourcePerProcess[i][j] << endl;
+				// cout << " Resource " << j + 1 << ": " << processes[i].maxResources[j] << endl;	//DEBUG
 			}
 		}
 
-		cout << endl;	//	Skip a line for neatness
+		// cout << endl;
 
-		//	Loop through each process and cache their parameters
-		for (int i = 0; i < numOfProcesses; i++)
-		{
+		//	Loop through each process
+		for (int i = 0; i < numProcesses; i++) {
 			//	Skip all lines until next process
-			while (true)
-			{
+			while (true) {
 				getline(inputFile, currentLine);
 				if (currentLine.find("process_") != string::npos)
 					break;
 			}
 			
-			cout << "Fetching parameters for " << currentLine << "..." << endl;
+			// cout << "Fetching parameters for " << currentLine << "..." << endl;	//DEBUG
 
-			//	ID
+			// ID
 			processes[i].ID = i + 1;
 
-			//	Deadline
+			// Deadline
 			getline(inputFile, currentLine);
-			processes[i].deadline = GetFirstIntInString(currentLine);
-			cout << "Process " << i+1 << " deadline: " << processes[i].deadline << endl;
+			processes[i].deadline = stoi(currentLine);
+			// cout << "Process " << i + 1 << " deadline: " << processes[i].deadline << endl;
 			
-			//	Compute time
+			// Compute time
 			getline(inputFile, currentLine);
-			processes[i].computeTime = GetFirstIntInString(currentLine);
-			cout << "Process " << i+1 << " compute time: " << processes[i].computeTime << endl;
+			processes[i].computeTime = stoi(currentLine);
+			// cout << "Process " << i + 1 << " compute time: " << processes[i].computeTime << endl;
 
-			//	Calculate & Assign the amount of instructions for this process
+			//	Get the instruction amount for this process
 			int instructionAmount = 0;			
-			streampos originalPos = inputFile.tellg();		//	Cache line position
-			while (true)
-			{
+			streampos originalPosition = inputFile.tellg();		//	Cache line position
+			
+			while (true) {
 				getline(inputFile, currentLine);
 
-				//	Break loop if a "end" line is found & assign the length of instructions array
-				if (currentLine.find("end") != string::npos)
-				{
+				//	Break loop if found "end" and assign the length of instructions array
+				if (currentLine.find("end") != string::npos) {
 					processes[i].instructions = new string[instructionAmount];
-					inputFile.seekg(originalPos, ios::beg);			//	Set the getline back to the original position
+					inputFile.seekg(originalPosition, ios::beg);			//	Set the getline back to the original position
 					break;
 				}
 				instructionAmount++;
 			}
 
-			cout << "Process " << i+1 << " instructions:" << endl;
+			// cout << "Process " << i + 1 << " instructions:" << endl;
 
-			//	Loop through instructions and cache them into process string array
-			for (int j = 0; j < instructionAmount; j++)
-			{
+			//	Loop through instructions
+			for (int j = 0; j < instructionAmount; j++) {
 				getline(inputFile, currentLine);
 				processes[i].instructions[j] = currentLine;
 
-				//	increment the total amount of instructions
+				//	increment the total number of instructions
 				instructionsToProcess++;
 
-				cout << " " << j+1 << ") " << processes[i].instructions[j] << endl;
+				// cout << " " << j+1 << ") " << processes[i].instructions[j] << endl;
 			}
-
-			cout << endl;	//	Skip a line for neatness
+			// cout << endl;
 		}
-
-		inputFile.close();
+		inputFile.close();		// Close the input file
 	}
-	else
-	{
-		cout << "ERROR: invalid file input or file not found." << endl;
+
+	else {
+		cout << "File not found.\n";
 		exit(0);
 	}
 }
-#pragma endregion
 
-#pragma region GetFirstIntInString(): Returns the first integer in the given string
-int GetFirstIntInString(string inputString) {
-	return stoi(inputString); // convert string to integer
-}
-
-int main(int argc, char** argv[]) {
-    
+int main() {
+    readFromFile("many.txt");
+	cout << "Done reading file\n";
     return 0;
 }
