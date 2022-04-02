@@ -171,8 +171,69 @@ void readFromFile(string fileName) {
 	}
 }
 
+void processesSortingByDeadline(Process arr[], int left, int right) {
+	// Quick Sort algorithm
+	int i = left, j = right;
+	Process temp;
+	Process pivot = arr[(left + right) / 2];
+
+	//	Partioning
+	while (i <= j) {
+		while (arr[i].deadline < pivot.deadline)
+			i++;
+		while (arr[j].deadline > pivot.deadline)
+			j--;
+		while (arr[j].deadline == pivot.deadline && arr[j].computeTime < pivot.computeTime)
+			j--;
+
+		if (i <= j) {
+			temp = arr[i];
+			arr[i] = arr[j];
+			arr[j] = temp;
+			i++;
+			j--;
+		}
+	}
+
+	//	Recursion
+	if (left < j)
+		processesSortingByDeadline(arr, left, j);
+	if (i < right)
+		processesSortingByDeadline(arr, i, right);
+}
+
+void createPipes() {
+	// cout << "Creating pipes for Processes...\n";
+	for (int i = 0; i < numProcesses; i++) {
+		// If process failed to create a pipe then exit
+		if (pipe(processes[i].pipe_ChildSendToParent) == -1) {
+			perror("ERROR: Pipe from Child to Parent failed.");
+			exit(0);
+		}
+		if (pipe(processes[i].pipe_ParentSendToChild) == -1) {
+			perror("ERROR: Pipe from Parent to Child failed.");
+			exit(0);
+		}
+		// cout << " Pipe created for Process " << processes[i].ID << endl;	// DEBUG
+	}
+
+	// Initialize buffer size of char array for pipe
+	bufferLength = sizeof(buffer) / sizeof(buffer[0]);
+	// cout << "Character buffer length for pipes: " << bufferLength << endl;	// DEBUG
+}
+
 int main() {
     readFromFile("many.txt");
-	cout << "Done reading file\n";
+	// cout << "Done reading file\n";
+
+	processesSortingByDeadline(processes, 0, numProcesses - 1);
+	// DEBUG
+	// cout << "Sorting sequence of process executions by lowest deadline first and highest computation time...\n";
+	// for (int i = 0; i < numProcesses; i++)
+	// 	cout << " " << i+1 << ") Process " << processes[i].ID << " with deadline: " << processes[i].deadline << " and computation time: " << processes[i].computeTime << endl;
+
+	createPipes();
+	cout << "Done\n";
+
     return 0;
 }
