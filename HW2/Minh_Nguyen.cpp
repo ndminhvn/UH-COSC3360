@@ -265,7 +265,7 @@ void request(string message, Process process, int requestInts[]) {
 	}
 	requestValues += ")";
 
-	cout << "Requesting " << requestValues << " resources for Process: " << process.ID << "..." << endl;
+	cout << "Requesting " << requestValues << " resources for Process: " << process.ID << endl;
 
 	// Cache original resource incase of failure
 	int tempResourceArray[numResources];
@@ -458,7 +458,7 @@ void print_resources_used(Process process, string message) {
 
 int main() {
     readFromFile("many.txt","many_words.txt");
-	cout << "Done reading file\n";
+	cout << "Done reading file\n\n";
 
 	processesSortingByDeadline(processes, 0, numProcesses - 1);
 	// cout << "Sorting done.\n";
@@ -488,7 +488,7 @@ int main() {
 	else if (pid == 0) {
 		cout << "Forked Child Process: " << currentProcess.ID << endl << endl;
 
-		//	Loop through each instruction and process it to Main Process
+		//	Loop through each instruction and process it to the main Process
 		for (int i = 0; i < sizeof(currentProcess.instructions); i++) {
 			close(currentProcess.pipe_ChildSendToParent[0]);
 			write(currentProcess.pipe_ChildSendToParent[1], currentProcess.instructions[i].c_str(), bufferLength);
@@ -514,8 +514,9 @@ int main() {
 				else if (instructionMessage.find("WAIT") != string::npos) {
 					cout << "Process " << currentProcess.ID << " is trying to send instruction: " << currentProcess.instructions[i] << " again." << endl;
 				}
-				else
+				else {
 					cout << "Process " << currentProcess.ID << " is listening..." << endl;
+				}
 			}
 		}
 
@@ -534,7 +535,7 @@ int main() {
 				read(processes[i].pipe_ChildSendToParent[0], buffer, bufferLength);
 
 				string instructionMessage = buffer;
-				//	if the read buffer is not empty... evaluate message 
+
 				if (sizeof(instructionMessage) > 0)
 					print_resources_used(processes[i], instructionMessage);
 			}
