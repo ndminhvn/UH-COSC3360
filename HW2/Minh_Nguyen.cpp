@@ -6,6 +6,7 @@
 #include <fstream>
 #include <string>
 #include <string.h>
+#include <vector>
 
 using namespace std;
 
@@ -13,11 +14,13 @@ using namespace std;
 int numResources = 0;					//	The total number of resource nodes
 int numProcesses = 0;					//	The total number of processes
 struct Resource	{						//	Structure of the resource node
-	int ID;
-	int available;
+	int ID;								//  ID of the resource
+	int available;						//  Number of resource instances
+	string resourceType;				//	Resource type
+	vector<string> resourceInstances;	//	Vector of resource instances	
 };
 
-Resource *resources;					//	Array that contains all the structures of the resrouce nodes
+Resource *resources;					//	Array that contains all the resource nodes
 
 struct Process {
 	int ID;
@@ -28,7 +31,7 @@ struct Process {
 	int *neededResources;				//	Array of how much resources needed left to complete execution per resource
 	string *instructions;				//	Array of instructions for the processor
 	int pipe_ParentSendToChild[2];			
-	int pipe_ChildSendToParent[2];			
+	int pipe_ChildSendToParent[2];
 };
 
 Process *processes;						//	Array that contains all the structures of the processes
@@ -47,16 +50,17 @@ int getValueFromLine(string inputString) {
 	return stoi(sub);
 }
 
-void readFromFile(string fileName) {
-	fstream inputFile(fileName);	
+void readFromFile(string fileName, string fileWordName) {
+	fstream inputFile(fileName);
+	fstream inputFile1(fileWordName);	
 
 	if (inputFile.is_open()) {
 		// cout << "\n" << "Opened file: " << fileName << "\n\n";
 
-		//	Get the first line
+		// Get the first line
 		string currentLine;
 
-		//	Get the number of resources
+		// Get the number of resources
 		getline(inputFile, currentLine);
 		numResources = stoi(currentLine);
 		
@@ -64,36 +68,61 @@ void readFromFile(string fileName) {
 		resources = new Resource[numResources];
 		// cout << "Total Resources: " << numResources << endl;	//DEBUG
 
-		//	Get the amount of processes
+		// Get the amount of processes
 		getline(inputFile, currentLine);
 		numProcesses = stoi(currentLine);
 		
-		//	Initialize size of processes array
+		// Initialize size of processes array
 		processes = new Process[numProcesses];
 		// cout << "Total Processes: " << numProcesses << "\n\n";	//DEBUG
 
-		//	Get the ID and amount of resources each resource has
+		// Get the ID and amount of resources each resource has
 		for (int i = 0; i < numResources; i++) {
 			getline(inputFile, currentLine);
 
 			//	Create new resource struct and add it to array of resources
 			Resource resource;
 			resources[i] = resource;
-			resources[i].ID = i;
+			resources[i].ID = i + 1;	// Resource ID starts from 1
 			resources[i].available = getValueFromLine(currentLine);
-			// cout << "Resource " << resources[i].ID + 1 << " has " << resources[i].available << " instances of resources." << endl;	// DEBUG
+			// cout << "Resource " << resources[i].ID << " has " << resources[i].available << " instances of resources." << endl;	// DEBUG
+		}
+
+		// Get resource instances from fileWordName file
+		if (inputFile1.is_open()) {
+			string line;
+			string id, type, instance;
+
+			// Get the resource instances from the input file
+			for (int i = 0; i < numResources; i++) {
+				// Get the resource type
+				inputFile1 >> id >> resources[i].resourceType;
+				// cout << "Resource type: " << resources[i].resourceType << endl;
+				// Loop through the resource instances vector and push_back to the vector
+				for (int j = 0; j < resources[i].available; j++) {
+					inputFile1 >> instance;
+					resources[i].resourceInstances.push_back(instance);
+					// cout << resources[i].resourceInstances[j] << " ";
+				}
+				// cout << endl;
+			}
+			inputFile1.close();
+		}
+		else if (!inputFile1.is_open()) {
+			perror("File not found.\n");
+			exit(0);
 		}
 
 		// cout << endl;	//	Skip a line - Used for DEBUG 
 
-		//	Get the size of resource related parameters for the process
+		// Get the size of resource related parameters for the process
 		for (int i = 0; i < numProcesses; i++) {
 			processes[i].allocatedResources = new int[numResources];
 			processes[i].maxResources = new int[numResources];
 			processes[i].neededResources = new int[numResources];
 		}
 		
-		//	Get the value of the max value processor can demand from each resource
+		// Get the value of the max value processor can demand from each resource
 		for (int i = 0; i < numProcesses; i++) {
 			// cout << "Max resources Process " << i + 1 << " that can demand from:" << endl;
 			
@@ -108,9 +137,9 @@ void readFromFile(string fileName) {
 
 		// cout << endl;
 
-		//	Loop through each process
+		// Loop through each process
 		for (int i = 0; i < numProcesses; i++) {
-			//	Skip all lines until next process
+			// Skip all lines until next process
 			while (true) {
 				getline(inputFile, currentLine);
 				if (currentLine.find("process_") != string::npos)
@@ -132,7 +161,7 @@ void readFromFile(string fileName) {
 			processes[i].computeTime = stoi(currentLine);
 			// cout << "Process " << i + 1 << " compute time: " << processes[i].computeTime << endl;
 
-			//	Get the instruction amount for this process
+			// Get the instruction amount for this process
 			int instructionAmount = 0;			
 			streampos originalPosition = inputFile.tellg();		//	Cache line position
 			
@@ -150,7 +179,7 @@ void readFromFile(string fileName) {
 
 			// cout << "Process " << i + 1 << " instructions:" << endl;
 
-			//	Loop through instructions
+			// Loop through instructions
 			for (int j = 0; j < instructionAmount; j++) {
 				getline(inputFile, currentLine);
 				processes[i].instructions[j] = currentLine;
@@ -166,7 +195,7 @@ void readFromFile(string fileName) {
 	}
 
 	else {
-		cout << "File not found.\n";
+		perror("File not found.\n");
 		exit(0);
 	}
 }
@@ -361,7 +390,7 @@ void use_resources(string message, Process process, int amount) {
 	write(process.pipe_ParentSendToChild[1], message.c_str(), bufferLength);
 }
 
-void renderMessage(Process process, string message) {
+void print_resources_used(Process process, string message) {
 	if (message.find("request") != string::npos) {
 		cout << "Main Process received instruction: " << message << " from Process " << process.ID << endl;
 
@@ -433,8 +462,8 @@ void renderMessage(Process process, string message) {
 }
 
 int main() {
-    readFromFile("many.txt");
-	// cout << "Done reading file\n";
+    readFromFile("many.txt","many_words.txt");
+	cout << "Done reading file\n";
 
 	processesSortingByDeadline(processes, 0, numProcesses - 1);
 	// cout << "Sorting done.\n";
@@ -512,7 +541,7 @@ int main() {
 				string instructionMessage = buffer;
 				//	if the read buffer is not empty... evaluate message 
 				if (sizeof(instructionMessage) > 0)
-					renderMessage(processes[i], instructionMessage);
+					print_resources_used(processes[i], instructionMessage);
 			}
 		}
 	}
