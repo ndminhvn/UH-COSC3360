@@ -255,8 +255,7 @@ bool isSafe() {
 	return true;
 }
 
-void request(string message, Process process, int requestInts[])
-{
+void request(string message, Process process, int requestInts[]) {
 	// Create string for request ints
 	string requestValues = "(";
 	for (int i = 0; i < numResources; i++) {
@@ -280,18 +279,17 @@ void request(string message, Process process, int requestInts[])
 			// Reset the allocatedResources to their original values
 			process.allocatedResources = tempResourceArray;
 			
-			cout << "Process " << process.ID << " is requesting more resources than it needs from resource " << i + 1 << ". Process is terminated.\n";
+			cout << "Process " << process.ID << " is requesting more resources than it needs from resource " << resources[i].ID << ". Process is terminated.\n";
 			
 			// Send termination message
 			write(process.pipe_ChildSendToParent[1], "TERMINATE", bufferLength);
 			return;
 		}
-		// If the request is more then the available...
+		// If the request is more then the available
 		else if (requestInts[i] > resources[i].available) {
 			// Process waits
 			cout << "Process " << process.ID << " is requesting more resources than available. Process waits." << endl;
 			
-			// Send wait message
 			//write(process.pipe_ParentSendToChild[1], "WAIT", bufferLength);
 			break;
 		}
@@ -316,24 +314,24 @@ void request(string message, Process process, int requestInts[])
 
 	cout << "Process " << process.ID << " now has " << allocatedValues << " allocated resources." << endl;
 
-	// Display amount of availiable resources in Resource
+	// Display number of availiable resources in each resource
 	for (int i = 0; i < numResources; i++)
 		cout << "Resource " << resources[i].ID << " now has " << resources[i].available << " availiable resources." << endl;
 
 	// Safe check
 	if (isSafe()) {
-		// Complete transaction
+		// Complete instruction
 		cout << "Process " << process.ID << " is safe. Instruction completed." << endl;
 	}
 	else {
-		// Process must wait
+		// Process waits
 		cout << "Process " << process.ID << " is not safe. Process is waiting." << endl;
 		return;
 	}
 	
 	cout << message << " instruction complete message written to Process " << process.ID << endl;
 	
-	message += "=SUCCESS";
+	message += " -> SUCCESS";
 	
 	//close(process.pipe_ParentWriteToChild[0]);
 	write(process.pipe_ParentSendToChild[1], message.c_str(), bufferLength);
@@ -358,7 +356,7 @@ void release(string message, Process process, int releaseInts[]) {
 		process.neededResources += releaseInts[i];
 	}
 
-	// Create a string of the array amount of allocated resources in process
+	// Create a string array holds the amount of allocated resources in process
 	string allocatedValues = "(";
 	for (int i = 0; i < numResources; i++) {
 		allocatedValues += to_string(process.allocatedResources[i]);
@@ -369,12 +367,11 @@ void release(string message, Process process, int releaseInts[]) {
 
 	cout << "Process " << process.ID << " now has " << allocatedValues << " allocated resources." << endl;
 
-	//	Display amount of availiable resources in Resource
 	for (int i = 0; i < numResources; i++)
 		cout << "Resource " << resources[i].ID << " now has " << resources[i].available << " availiable resources." << endl;
 
-	cout << message << " instruction complete message written to Process " << process.ID << endl;
-	message += "=SUCCESS";
+	cout << message << " instruction completed message sent to Process " << process.ID << endl;
+	message += " -> SUCCESS";
 
 	write(process.pipe_ParentSendToChild[1], message.c_str(), bufferLength);
 }
@@ -385,7 +382,7 @@ void use_resources(string message, Process process, int amount) {
 	cout << "Process " << process.ID << " used (" << amount << ") allocated resources." << endl;
 	
 	cout << message << " instruction complete message written to Process " << process.ID << endl;
-	message += "=SUCCESS";
+	message += " -> SUCCESS";
 
 	write(process.pipe_ParentSendToChild[1], message.c_str(), bufferLength);
 }
@@ -400,9 +397,8 @@ void print_resources_used(Process process, string message) {
 		string number;
 		for (int i = 0; i < message.length(); i++) {
 			if (isdigit(message[i])) {	
-				//found a digit, get the int
 				for (int j = i; ; j++) {
-					if (isdigit(message[j]))		//consecutive digits
+					if (isdigit(message[j]))
 						number += message[j];
 					else {
 						i = j - 1;		//set i to the index of the last digit
@@ -425,9 +421,9 @@ void print_resources_used(Process process, string message) {
 		int intIndexInString = 0;
 		string number;
 		for (int i = 0; i < message.length(); i++) {
-			if (isdigit(message[i])) {	//found a digit, get the int
+			if (isdigit(message[i])) {
 				for (int j = i; ; j++) {
-					if (isdigit(message[j]))		//consecutive digits
+					if (isdigit(message[j]))
 						number += message[j];
 					else {
 						i = j - 1;		//set i to the index of the last digit
@@ -445,7 +441,6 @@ void print_resources_used(Process process, string message) {
 	}
 	else if (message.find("use_resources") != string::npos) {
 		cout << "Main Process received instruction: " << message << " from Process " << process.ID << endl;
-		
 		use_resources(message, process, 1);
 	}
 	// If process sent termination message... tell main process that it has been terminated
